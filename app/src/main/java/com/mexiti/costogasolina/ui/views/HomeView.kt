@@ -14,11 +14,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -45,7 +48,7 @@ fun HomeView(
     viewModel: GasolineViewModel,
     modifier: Modifier = Modifier
 ) {
-    // Escuchar la lista de transacciones desde Room
+    // Observa los registros y actualiza la pantalla cuando cambian.
     val transactions by viewModel.transaction.collectAsState()
 
     Scaffold(
@@ -62,8 +65,11 @@ fun HomeView(
             )
         },
         floatingActionButton = {
+            // Abre la pantalla para agregar un nuevo registro.
             FloatingActionButton(
-                onClick = { navController.navigate("AddView") },
+                onClick = {
+                    navController.navigate("AddView")
+                },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -74,8 +80,9 @@ fun HomeView(
             }
         }
     ) { innerPadding ->
+
         if (transactions.isEmpty()) {
-            // Estado vacío cuando no existen datos grabados
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -88,8 +95,10 @@ fun HomeView(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
         } else {
-            // Lista de registros
+
+            // Muestra una tarjeta por cada registro guardado.
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -98,7 +107,16 @@ fun HomeView(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(transactions) { item ->
-                    TransactionCard(transaction = item)
+
+                    TransactionCard(
+                        transaction = item,
+                        onEditClick = { id ->
+                            navController.navigate("EditView/$id")
+                        },
+                        onDeleteClick = { id ->
+                            navController.navigate("DeleteView/$id")
+                        }
+                    )
                 }
             }
         }
@@ -108,9 +126,11 @@ fun HomeView(
 @Composable
 fun TransactionCard(
     transaction: GasolineTransaction,
+    onEditClick: (Int) -> Unit,
+    onDeleteClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Cálculo total reutilizando el dominio
+    // Calcula el total de esta carga de gasolina.
     val total = calcularMonto(
         precio = transaction.pricePerLiter,
         cantLitros = transaction.liters,
@@ -127,7 +147,8 @@ fun TransactionCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Encabezado: Fecha y Total destacado
+
+            // Encabezado de la tarjeta: fecha y monto total.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -138,6 +159,7 @@ fun TransactionCard(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
+
                 Text(
                     text = stringResource(R.string.monto_total, total),
                     style = MaterialTheme.typography.titleLarge,
@@ -146,9 +168,11 @@ fun TransactionCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(
+                modifier = Modifier.height(2.dp)
+            )
 
-            // Detalle: Precio por litro y Litros
+            // Información principal del registro.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -157,13 +181,14 @@ fun TransactionCard(
                     text = "Precio/L: $${transaction.pricePerLiter}",
                     style = MaterialTheme.typography.bodyMedium
                 )
+
                 Text(
                     text = "Litros: ${transaction.liters} L",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
 
-            // Muestra propina y kilometraje solo si tienen valores registrados (> 0)
+            // Muestra los datos opcionales si fueron registrados.
             if (transaction.tip > 0 || transaction.kilometers > 0) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -173,16 +198,48 @@ fun TransactionCard(
                         Text(
                             text = "Propina: $${transaction.tip}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+
                     if (transaction.kilometers > 0) {
                         Text(
                             text = "Km: ${transaction.kilometers} km",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            }
+
+            // Botones para editar o eliminar este registro.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+
+                IconButton(
+                    onClick = {
+                        onEditClick(transaction.id)
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar Registro",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        onDeleteClick(transaction.id)
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar Registro",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }
